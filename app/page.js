@@ -1,6 +1,6 @@
 'use client'
 import { useState } from "react";
-
+import { supabase } from '../lib/supabase'
 const cream = "#F5F2ED";
 const black = "#0E0E0E";
 const muted = "#9A9690";
@@ -323,30 +323,76 @@ function Landing({onStart,onLogin}){
   </div>;
 }
 
-function Auth({onAuth}){
-  const [mode,setMode]=useState("signup");
-  const [email,setEmail]=useState("");
-  const [pw,setPw]=useState("");
-  const [name,setName]=useState("");
-  return <div className="a0" style={{minHeight:"82vh",display:"flex",alignItems:"center",justifyContent:"center",padding:40,background:cream}}>
-    <div style={{maxWidth:440,width:"100%"}}>
-      <span className="sec-lab">Welcome to FORMA</span>
-      <h2 className="ef" style={{fontSize:52,fontWeight:400,marginBottom:8,lineHeight:1.05}}>{mode==="signup"?"Create Account":"Welcome Back"}</h2>
-      <p style={{fontSize:13,color:muted,marginBottom:40,fontWeight:300}}>{mode==="signup"?"Start your personalized fit journey.":"Continue finding clothes that fit."}</p>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",border:`1px solid ${border}`,marginBottom:32}}>
-        {["signup","login"].map(m=><button key={m} onClick={()=>setMode(m)} style={{padding:"12px 8px",background:mode===m?black:"transparent",color:mode===m?cream:muted,border:"none",fontFamily:"'Inter',sans-serif",fontWeight:500,fontSize:10,cursor:"pointer",letterSpacing:".1em",textTransform:"uppercase",transition:"all .2s"}}>{m==="signup"?"Create Account":"Sign In"}</button>)}
+function Auth({ onAuth }) {
+  const [mode, setMode] = useState("signup");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setErrorMsg("");
+
+    if (mode === "signup") {
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: pw,
+      });
+      if (error) {
+        setErrorMsg(error.message);
+        setLoading(false);
+        return;
+      }
+      onAuth({ name: name || email.split("@")[0], email });
+
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: pw,
+      });
+      if (error) {
+        setErrorMsg(error.message);
+        setLoading(false);
+        return;
+      }
+      onAuth({ name: email.split("@")[0], email });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="a0" style={{minHeight:"82vh",display:"flex",alignItems:"center",justifyContent:"center",padding:40,background:cream}}>
+      <div style={{maxWidth:440,width:"100%"}}>
+        <span className="sec-lab">Welcome to FORMA</span>
+        <h2 className="ef" style={{fontSize:52,fontWeight:400,marginBottom:8,lineHeight:1.05}}>
+          {mode === "signup" ? "Create Account" : "Welcome Back"}
+        </h2>
+        <p style={{fontSize:13,color:muted,marginBottom:40,fontWeight:300}}>
+          {mode === "signup" ? "Start your personalized fit journey." : "Continue finding clothes that fit."}
+        </p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",border:`1px solid ${border}`,marginBottom:32}}>
+          {["signup","login"].map(m =>
+            <button key={m} onClick={() => setMode(m)} style={{padding:"12px 8px",background:mode===m?black:"transparent",color:mode===m?cream:muted,border:"none",fontFamily:"'Inter',sans-serif",fontWeight:500,fontSize:10,cursor:"pointer",letterSpacing:".1em",textTransform:"uppercase",transition:"all .2s"}}>
+              {m === "signup" ? "Create Account" : "Sign In"}
+            </button>
+          )}
+        </div>
+        <div style={{display:"grid",gap:10,marginBottom:20}}>
+          {mode === "signup" && <input className="inp" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)}/>}
+          <input className="inp" type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)}/>
+          <input className="inp" type="password" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)}/>
+        </div>
+        {errorMsg && <p style={{color:"red",fontSize:12,marginBottom:12}}>{errorMsg}</p>}
+        <button className="btn btn-blk" style={{width:"100%",padding:15}} onClick={handleSubmit}>
+          {loading ? "Please wait..." : mode === "signup" ? "Create Account & Take Quiz →" : "Sign In →"}
+        </button>
       </div>
-      <div style={{display:"grid",gap:10,marginBottom:20}}>
-        {mode==="signup"&&<input className="inp" placeholder="Full Name" value={name} onChange={e=>setName(e.target.value)}/>}
-        <input className="inp" type="email" placeholder="Email Address" value={email} onChange={e=>setEmail(e.target.value)}/>
-        <input className="inp" type="password" placeholder="Password" value={pw} onChange={e=>setPw(e.target.value)}/>
-      </div>
-      <button className="btn btn-blk" style={{width:"100%",padding:15}} onClick={()=>onAuth({name:name||email.split("@")[0],email})}>
-        {mode==="signup"?"Create Account & Take Quiz →":"Sign In →"}
-      </button>
     </div>
-  </div>;
+  );
 }
+
 
 function Quiz({onComplete}){
   const [step,setStep]=useState(0);
