@@ -726,12 +726,50 @@ export default function App(){
   const [profile,setProfile]=useState(null);
   const [product,setProduct]=useState(null);
 
+  const loadProfile = async (userData) => {
+    setUser(userData);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (data) {
+      setProfile({
+        heightFt: data.height_ft,
+        heightIn: data.height_in,
+        heightLabel: data.height_label,
+        heightInches: data.height_inches,
+        bodyTypes: data.body_types,
+        fitPref: data.fit_pref,
+        size: data.size,
+      });
+      setView("results");
+    } else {
+      setView("quiz");
+    }
+  };
   return <div style={{background:cream,minHeight:"100vh"}}>
     <style>{css}</style>
     <Nav view={view} setView={setView} user={user}/>
     {view==="landing"&&<Landing onStart={()=>setView(user?"quiz":"auth")} onLogin={()=>setView("auth")}/>}
-    {view==="auth"&&<Auth onAuth={u=>{setUser(u);setView("quiz");}}/>}
-    {view==="quiz"&&<Quiz onComplete={a=>{setProfile(a);setView("results");}}/>}
+    {view === "auth" && <Auth onAuth={loadProfile} />}
+    {view === "quiz" && <Quiz onComplete={async (a) => {
+  setProfile(a);
+  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.from('profiles').upsert({
+    id: user.id,
+    height_ft: a.heightFt,
+    height_in: a.heightIn,
+    height_label: a.heightLabel,
+    height_inches: a.heightInches,
+    body_types: a.bodyTypes,
+    fit_pref: a.fitPref,
+    size: a.size,
+  });
+  setView("results");
+}} />}
     {view==="results"&&<Results profile={profile} onProductClick={p=>{setProduct(p);setView("product");}}/>}
     {view==="product"&&product&&<Product product={product} profile={profile} onBack={()=>setView("results")}/>}
   </div>;
