@@ -340,6 +340,7 @@ function Auth({ onAuth }) {
         email: email,
         password: pw,
       });
+      
       if (error) {
         setErrorMsg(error.message);
         setLoading(false);
