@@ -1,5 +1,6 @@
+
 'use client'
-import { useState } from "react";
+import { useState, useEffect } from "react"
 import { supabase } from '../lib/supabase'
 const cream = "#F5F2ED";
 const black = "#0E0E0E";
@@ -141,7 +142,13 @@ function Nav({view,setView,user}){
       </ul>
       <div className="nav-right">
         {user
-          ? <span style={{fontSize:12,fontWeight:500,letterSpacing:".04em"}}>{user.name}</span>
+          ? <div style={{display:"flex",gap:16,alignItems:"center"}}>
+    <span style={{fontSize:12,fontWeight:500,letterSpacing:".04em"}}>{user.name}</span>
+    <button className="btn-ghost" style={{fontSize:11,letterSpacing:".08em"}} onClick={async()=>{
+      await supabase.auth.signOut();
+      window.location.reload();
+    }}>Sign Out</button>
+  </div>
           : <>
               <button className="btn-ghost" onClick={()=>setView("auth")}>Log in</button>
               <button className="btn btn-blk" onClick={()=>setView("auth")}>Get Started</button>
@@ -725,23 +732,27 @@ export default function App(){
   const [user,setUser]=useState(null);
   const [profile,setProfile]=useState(null);
   const [product,setProduct]=useState(null);
-
+useEffect(()=>{
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if(session?.user){
+        loadProfile(session.user);
+      }
+    });
+  },[]);
   const loadProfile = async (userData) => {
     setUser(userData);
     
     const { data: { user } } = await supabase.auth.getUser();
-    console.log("user:", user);
     
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     console.log("profile data:", data);
-    console.log("profile error:", error);
 
-    if (data) {
+    if (data && data.height_label) {
       setProfile({
         heightFt: data.height_ft,
         heightIn: data.height_in,
@@ -764,7 +775,8 @@ export default function App(){
     {view==="quiz"&&<Quiz onComplete={async (a)=>{
       setProfile(a);
       const {data:{user}}=await supabase.auth.getUser();
-      await supabase.from('profiles').upsert({
+      console.log("saving profile for user:", user.id);
+      const {error} = await supabase.from('profiles').upsert({
         id:user.id,
         height_ft:a.heightFt,
         height_in:a.heightIn,
@@ -774,6 +786,7 @@ export default function App(){
         fit_pref:a.fitPref,
         size:a.size,
       });
+      console.log("save error:", error);
       setView("results");
     }}/>}
     {view==="results"&&<Results profile={profile} onProductClick={p=>{setProduct(p);setView("product");}}/>}
