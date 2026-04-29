@@ -754,22 +754,22 @@ export default function App(){
     <style>{css}</style>
     <Nav view={view} setView={setView} user={user}/>
     {view==="landing"&&<Landing onStart={()=>setView(user?"quiz":"auth")} onLogin={()=>setView("auth")}/>}
-    {view === "auth" && <Auth onAuth={loadProfile} />}
-    {view === "quiz" && <Quiz onComplete={async (a) => {
-  setProfile(a);
-  const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from('profiles').upsert({
-    id: user.id,
-    height_ft: a.heightFt,
-    height_in: a.heightIn,
-    height_label: a.heightLabel,
-    height_inches: a.heightInches,
-    body_types: a.bodyTypes,
-    fit_pref: a.fitPref,
-    size: a.size,
-  });
-  setView("results");
-}} />}
+    {view==="auth"&&<Auth onAuth={loadProfile}/>}
+    {view==="quiz"&&<Quiz onComplete={async (a)=>{
+      setProfile(a);
+      const {data:{user}}=await supabase.auth.getUser();
+      await supabase.from('profiles').upsert({
+        id:user.id,
+        height_ft:a.heightFt,
+        height_in:a.heightIn,
+        height_label:a.heightLabel,
+        height_inches:a.heightInches,
+        body_types:a.bodyTypes,
+        fit_pref:a.fitPref,
+        size:a.size,
+      });
+      setView("results");
+    }}/>}
     {view==="results"&&<Results profile={profile} onProductClick={p=>{setProduct(p);setView("product");}}/>}
     {view==="product"&&product&&<Product product={product} profile={profile} onBack={()=>setView("results")}/>}
   </div>;
