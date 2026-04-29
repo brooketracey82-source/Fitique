@@ -397,48 +397,148 @@ function Auth({ onAuth }) {
 
 function Quiz({onComplete}){
   const [step,setStep]=useState(0);
-  const [ans,setAns]=useState({height:null,bodyTypes:[],fitPref:null});
-  const steps=[
-    {q:"What's your height?",sub:"Matches you with reviews from people your exact size.",field:"height",type:"single",
-     opts:[{l:"Under 5'1\"",v:"under_61"},{l:"5'1\" – 5'3\"",v:"61_63"},{l:"5'4\" – 5'6\"",v:"64_66"},{l:"5'7\" – 5'9\"",v:"67_69"},{l:"5'10\" and above",v:"70_plus"}]},
-    {q:"How would you describe your build?",sub:"Select all that apply.",field:"bodyTypes",type:"multi",
-     opts:[{l:"Slim / Straight",v:"slim"},{l:"Petite",v:"petite"},{l:"Athletic / Muscular",v:"athletic"},{l:"Curvy / Hourglass",v:"curvy"},{l:"Full-Figured",v:"broad"},{l:"Average",v:"average"}]},
-    {q:"How do you like clothes to fit?",sub:"This makes recommendations accurate.",field:"fitPref",type:"single",
-     opts:[{l:"Tight / Body-con",v:"tight"},{l:"Fitted / Regular",v:"regular"},{l:"Slightly Relaxed",v:"relaxed"},{l:"Oversized / Baggy",v:"oversized"}]},
-  ];
-  const cur=steps[step];
-  const pct=((step+1)/steps.length)*100;
-  const toggle=v=>{
-    if(cur.type==="multi") setAns({...ans,bodyTypes:ans.bodyTypes.includes(v)?ans.bodyTypes.filter(x=>x!==v):[...ans.bodyTypes,v]});
-    else setAns({...ans,[cur.field]:v});
+  const [ans,setAns]=useState({heightFt:"",heightIn:"",bodyTypes:[],fitPref:null,size:null});
+  const [heightErr,setHeightErr]=useState("");
+
+  const SIZES=["XS","S","M","L","XL","XXL"];
+  const BODY=[{l:"Slim / Straight",v:"slim"},{l:"Petite",v:"petite"},{l:"Athletic / Muscular",v:"athletic"},{l:"Curvy / Hourglass",v:"curvy"},{l:"Full-Figured",v:"broad"},{l:"Average",v:"average"}];
+  const FITPREF=[{l:"Tight / Body-con",v:"tight",sub:"Close to the body"},{l:"Fitted / Regular",v:"regular",sub:"True to size, clean silhouette"},{l:"Slightly Relaxed",v:"relaxed",sub:"A little room, still polished"},{l:"Oversized / Baggy",v:"oversized",sub:"Intentionally large or flowy"}];
+
+  const totalSteps=4;
+  const pct=((step+1)/totalSteps)*100;
+
+  const validateHeight=()=>{
+    const ft=parseInt(ans.heightFt);
+    const inch=parseInt(ans.heightIn);
+    if(!ans.heightFt||isNaN(ft)||ft<3||ft>7){setHeightErr("Please enter a valid height (3–7 ft)");return false;}
+    if(ans.heightIn===""||isNaN(inch)||inch<0||inch>11){setHeightErr("Please enter inches (0–11)");return false;}
+    setHeightErr("");
+    return true;
   };
-  const isSel=v=>cur.type==="multi"?ans.bodyTypes.includes(v):ans[cur.field]===v;
-  const canNext=cur.type==="multi"?ans.bodyTypes.length>0:ans[cur.field]!==null;
+
+  const canNext=()=>{
+    if(step===0) return ans.heightFt!==""&&ans.heightIn!=="";
+    if(step===1) return ans.bodyTypes.length>0;
+    if(step===2) return ans.fitPref!==null;
+    if(step===3) return ans.size!==null;
+    return false;
+  };
+
+  const handleNext=()=>{
+    if(step===0&&!validateHeight()) return;
+    if(step<totalSteps-1) setStep(step+1);
+    else onComplete({
+      ...ans,
+      heightLabel:`${ans.heightFt}'${ans.heightIn}"`,
+      heightInches: parseInt(ans.heightFt)*12+parseInt(ans.heightIn),
+    });
+  };
+
   return <div className="a0" style={{minHeight:"82vh",display:"flex",alignItems:"center",justifyContent:"center",padding:40,background:cream}}>
     <div style={{maxWidth:520,width:"100%"}}>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
         <span style={{fontSize:9,color:muted,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Fit Profile Quiz</span>
-        <span style={{fontSize:9,color:muted}}>{step+1} / {steps.length}</span>
+        <span style={{fontSize:9,color:muted}}>{step+1} / {totalSteps}</span>
       </div>
       <div className="bar-t"><div className="bar-f" style={{width:`${pct}%`}}/></div>
-      <div style={{marginBottom:40,marginTop:40}}>
-        <span className="sec-lab">Step {step+1}</span>
-        <h2 className="ef" style={{fontSize:48,fontWeight:400,lineHeight:1.05,marginBottom:10}}>{cur.q}</h2>
-        <p style={{fontSize:13,color:muted,fontWeight:300,lineHeight:1.7}}>{cur.sub}</p>
-      </div>
-      <div style={{display:"grid",gap:6,marginBottom:36}}>
-        {cur.opts.map(o=><button key={o.v} className={`qopt${isSel(o.v)?" on":""}`} onClick={()=>toggle(o.v)}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:13,fontWeight:isSel(o.v)?500:300}}>{o.l}</span>
-            {isSel(o.v)&&<span style={{width:18,height:18,background:black,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:cream,fontSize:10,flexShrink:0}}>✓</span>}
+
+      {/* STEP 0 — exact height */}
+      {step===0&&<div style={{marginTop:40}}>
+        <span className="sec-lab">Step 1</span>
+        <h2 className="ef" style={{fontSize:48,fontWeight:400,lineHeight:1.05,marginBottom:10}}>What's your exact height?</h2>
+        <p style={{fontSize:13,color:muted,fontWeight:300,lineHeight:1.7,marginBottom:36}}>We use this to match you with reviews from people your exact size — not just a general range.</p>
+        <div style={{display:"flex",gap:16,alignItems:"flex-start",marginBottom:8}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:9,color:muted,letterSpacing:".1em",textTransform:"uppercase",marginBottom:8,fontWeight:500}}>Feet</div>
+            <div style={{position:"relative"}}>
+              <input className="inp" type="number" min="3" max="7" placeholder="5" value={ans.heightFt}
+                onChange={e=>setAns({...ans,heightFt:e.target.value})}
+                style={{fontSize:28,fontWeight:300,padding:"16px 20px",textAlign:"center",letterSpacing:".04em"}}/>
+              <span style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",fontSize:13,color:muted}}>ft</span>
+            </div>
           </div>
-        </button>)}
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:9,color:muted,letterSpacing:".1em",textTransform:"uppercase",marginBottom:8,fontWeight:500}}>Inches</div>
+            <div style={{position:"relative"}}>
+              <input className="inp" type="number" min="0" max="11" placeholder="6" value={ans.heightIn}
+                onChange={e=>setAns({...ans,heightIn:e.target.value})}
+                style={{fontSize:28,fontWeight:300,padding:"16px 20px",textAlign:"center",letterSpacing:".04em"}}/>
+              <span style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",fontSize:13,color:muted}}>in</span>
+            </div>
+          </div>
+        </div>
+        {ans.heightFt&&ans.heightIn&&!heightErr&&
+          <div style={{fontSize:13,color:muted,marginBottom:8}}>
+            You entered: <strong style={{color:black}}>{ans.heightFt}'{ans.heightIn}"</strong>
+            {" "}({parseInt(ans.heightFt)*12+parseInt(ans.heightIn)} inches total)
+          </div>}
+        {heightErr&&<div style={{fontSize:12,color:"#c0392b",marginBottom:8}}>{heightErr}</div>}
+        <div style={{fontSize:11,color:"#C5C0BA",marginTop:4}}>Enter a value between 3'0" and 7'11"</div>
+      </div>}
+
+      {/* STEP 1 — body type */}
+      {step===1&&<div style={{marginTop:40}}>
+        <span className="sec-lab">Step 2</span>
+        <h2 className="ef" style={{fontSize:48,fontWeight:400,lineHeight:1.05,marginBottom:10}}>How would you describe your build?</h2>
+        <p style={{fontSize:13,color:muted,fontWeight:300,lineHeight:1.7,marginBottom:36}}>Select all that apply — bodies are complex.</p>
+        <div style={{display:"grid",gap:6}}>
+          {BODY.map(o=>{
+            const sel=ans.bodyTypes.includes(o.v);
+            return <button key={o.v} className={`qopt${sel?" on":""}`}
+              onClick={()=>setAns({...ans,bodyTypes:sel?ans.bodyTypes.filter(x=>x!==o.v):[...ans.bodyTypes,o.v]})}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:13,fontWeight:sel?500:300}}>{o.l}</span>
+                {sel&&<span style={{width:18,height:18,background:black,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:cream,fontSize:10,flexShrink:0}}>✓</span>}
+              </div>
+            </button>;
+          })}
+        </div>
+      </div>}
+
+      {/* STEP 2 — fit preference */}
+      {step===2&&<div style={{marginTop:40}}>
+        <span className="sec-lab">Step 3</span>
+        <h2 className="ef" style={{fontSize:48,fontWeight:400,lineHeight:1.05,marginBottom:10}}>How do you like clothes to fit?</h2>
+        <p style={{fontSize:13,color:muted,fontWeight:300,lineHeight:1.7,marginBottom:36}}>Be honest — this makes your recommendations accurate.</p>
+        <div style={{display:"grid",gap:6}}>
+          {FITPREF.map(o=>{
+            const sel=ans.fitPref===o.v;
+            return <button key={o.v} className={`qopt${sel?" on":""}`} onClick={()=>setAns({...ans,fitPref:o.v})}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:sel?500:300,marginBottom:3}}>{o.l}</div>
+                  <div style={{fontSize:11,color:muted,fontWeight:300}}>{o.sub}</div>
+                </div>
+                {sel&&<span style={{width:18,height:18,background:black,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:cream,fontSize:10,flexShrink:0}}>✓</span>}
+              </div>
+            </button>;
+          })}
+        </div>
+      </div>}
+
+      {/* STEP 3 — size */}
+      {step===3&&<div style={{marginTop:40}}>
+        <span className="sec-lab">Step 4</span>
+        <h2 className="ef" style={{fontSize:48,fontWeight:400,lineHeight:1.05,marginBottom:10}}>What's your usual size?</h2>
+        <p style={{fontSize:13,color:muted,fontWeight:300,lineHeight:1.7,marginBottom:36}}>This is the size you typically reach for first when shopping.</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+          {SIZES.map(s=>{
+            const sel=ans.size===s;
+            return <button key={s} onClick={()=>setAns({...ans,size:s})}
+              style={{padding:"24px 12px",background:sel?black:white,color:sel?cream:black,border:`1px solid ${sel?black:border}`,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:sel?500:300,fontSize:16,letterSpacing:".08em",transition:"all .2s"}}>
+              {s}
+            </button>;
+          })}
+        </div>
+        <p style={{fontSize:11,color:muted,fontWeight:300,lineHeight:1.7}}>Between sizes? Pick the one you buy more often. You can always refine this later in your profile.</p>
+      </div>}
+
+      {/* NAV */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:40}}>
         {step>0?<button className="btn-ghost" onClick={()=>setStep(step-1)}>← Back</button>:<div/>}
-        {step<steps.length-1
-          ?<button className="btn btn-blk" onClick={()=>canNext&&setStep(step+1)} style={{opacity:canNext?1:.3}}>Continue →</button>
-          :<button className="btn btn-blk" onClick={()=>canNext&&onComplete(ans)} style={{opacity:canNext?1:.3}}>See My Matches →</button>}
+        <button className="btn btn-blk" onClick={handleNext} style={{opacity:canNext()?1:.3}}>
+          {step<totalSteps-1?"Continue →":"See My Matches →"}
+        </button>
       </div>
     </div>
   </div>;
@@ -453,7 +553,7 @@ function Results({profile,onProductClick}){
     <div style={{background:white,borderBottom:`1px solid ${border}`,padding:"14px 64px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <span style={{fontSize:9,color:muted,letterSpacing:".1em",textTransform:"uppercase",marginRight:6}}>Your Profile:</span>
-        <span className="pill">{HT[profile.height]}</span>
+        
         {profile.bodyTypes.map(bt=><span key={bt} className="pill" style={{textTransform:"capitalize"}}>{bt}</span>)}
         <span className="pill" style={{textTransform:"capitalize"}}>{profile.fitPref} Fit</span>
       </div>
