@@ -728,12 +728,18 @@ export default function App(){
 
   const loadProfile = async (userData) => {
     setUser(userData);
+    
     const { data: { user } } = await supabase.auth.getUser();
+    console.log("user:", user);
+    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
+
+    console.log("profile data:", data);
+    console.log("profile error:", error);
 
     if (data) {
       setProfile({
