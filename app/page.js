@@ -732,14 +732,7 @@ export default function App(){
   const [user,setUser]=useState(null);
   const [profile,setProfile]=useState(null);
   const [product,setProduct]=useState(null);
-useEffect(()=>{
-    supabase.auth.getSession().then(({data:{session}})=>{
-      if(session?.user){
-        loadProfile(session.user);
-      }
-    });
-  },[]);
-  const loadProfile = async (userData) => {
+ const loadProfile = async (userData) => {
     setUser(userData);
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -767,6 +760,14 @@ useEffect(()=>{
       setView("quiz");
     }
   };
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if(session?.user){
+        loadProfile(session.user);
+      }
+    });
+  },[]);
+ 
   return <div style={{background:cream,minHeight:"100vh"}}>
     <style>{css}</style>
     <Nav view={view} setView={setView} user={user}/>
